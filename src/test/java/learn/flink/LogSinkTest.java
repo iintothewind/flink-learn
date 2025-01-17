@@ -179,7 +179,7 @@ public class LogSinkTest {
                 }))
                 .map((MapFunction<String, Tuple2<String, Integer>>) value -> {
                     try {
-                        Thread.sleep(500); // Throttle the source emission
+                        Thread.sleep(1000); // Throttle the source emission
                     } catch (InterruptedException e) {
                         // Handle exception
                     }
@@ -192,8 +192,8 @@ public class LogSinkTest {
                     .withTimestampAssigner((event, timestamp) -> System.currentTimeMillis())) // Using system time as event time
                 .windowAll(TumblingEventTimeWindows.of(Duration.ofSeconds(1)))
 //                .windowAll(TumblingProcessingTimeWindows.of(Duration.ofSeconds(1)))
-//                .sum(1); // Sum the counts globally
-                .reduce((t1, t2) -> new Tuple2<>("total", t1.f1 + t2.f1));
+                .sum(1); // Sum the counts globally
+//                .reduce((t1, t2) -> new Tuple2<>("total", t1.f1 + t2.f1));
 
             dataStream.addSink(new LogSink<>());
 
