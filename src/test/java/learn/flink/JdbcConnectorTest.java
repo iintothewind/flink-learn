@@ -1,8 +1,11 @@
 package learn.flink;
 
+import io.vavr.collection.Stream;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import java.util.stream.Collectors;
 import learn.flink.model.SystemUser;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -111,6 +114,11 @@ public class JdbcConnectorTest {
       env.execute("jdbcTest");
    }
 
+   static String repeat(final String s, final Long times) {
+       final List<String> lst = Stream.from(1).map(i -> s).take(times.intValue()).asJava();
+       return String.join("", lst);
+   }
+
    @Test
    @SneakyThrows
    public void testMaxBy() {
@@ -118,7 +126,7 @@ public class JdbcConnectorTest {
       final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
       final SingleOutputStreamOperator<SystemUser> stream = env.fromSequence(1L, 99L)
               .map(i -> SystemUser.builder().id(i)
-                      .username(String.format("usr%s", i % 9))
+                      .username(String.format("usr%s", repeat("a", i)))
                       .password(String.format("pwd%s", i % 9))
                       .email(String.format("usr%s@test.ca", i % 9))
                       .build())
