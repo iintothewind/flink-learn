@@ -1,10 +1,13 @@
 package learn.flink;
 
+import java.util.concurrent.TimeUnit;
 import learn.flink.model.SystemUser;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.connector.jdbc.source.JdbcSource;
 import org.apache.flink.connector.jdbc.source.reader.extractor.ResultExtractor;
 import org.apache.flink.connector.jdbc.split.JdbcGenericParameterValuesProvider;
@@ -102,6 +105,25 @@ public class JdbcConnectorTest {
 
 
       env.execute("jdbcTest");
+   }
+
+   @Test
+    public void testMaxBy() {
+
+       final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+       env.fromSequence(1L, 99L)
+           .map(i -> SystemUser.builder().id(i).username(String.format("usr%s", i)).password(String.format("pwd%s", i)).email(String.format("usr%s@test.ca", i)).build())
+           .returns(TypeInformation.of(new TypeHint<>() {
+           }))
+           .map( value -> {
+               TimeUnit.MILLISECONDS.sleep(1000L);
+               return value;
+           })
+           .returns(TypeInformation.of(new TypeHint<>() {
+           }))
+           .keyBy(u->u.getId())
+           .max("")
+
    }
 
 }
