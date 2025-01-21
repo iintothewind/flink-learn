@@ -16,4 +16,5 @@ public class SystemUser implements Serializable {
    private String username;
    private String password;
    private String email;
+   private Double salary;
 }

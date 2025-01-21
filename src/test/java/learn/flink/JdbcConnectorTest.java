@@ -1,6 +1,7 @@
 package learn.flink;
 
 import io.vavr.collection.Stream;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -29,122 +30,119 @@ import java.sql.SQLException;
 @Slf4j
 public class JdbcConnectorTest {
 
-   public final static String user = "root";
-   public final static String password = "ulala@123";
-   public final static String driver = "com.mysql.cj.jdbc.Driver";
-   public final static String jdbcUrl = "jdbc:mysql://3.231.250.228:13307/ulala_main?useSSL=false&characterEncoding=UTF-8&serverTimezone=America/Vancouver&allowPublicKeyRetrieval=true";
+    public final static String user = "root";
+    public final static String password = "ulala@123";
+    public final static String driver = "com.mysql.cj.jdbc.Driver";
+    public final static String jdbcUrl = "jdbc:mysql://3.231.250.228:13307/ulala_main?useSSL=false&characterEncoding=UTF-8&serverTimezone=America/Vancouver&allowPublicKeyRetrieval=true";
 
-   public static class SystemUserResultExtractor implements ResultExtractor<SystemUser> {
-      @Override
-      public SystemUser extract(final ResultSet resultSet) throws SQLException {
-         return SystemUser.builder()
-                 .id(resultSet.getLong("id"))
-                 .username(resultSet.getString("username"))
-                 .password(resultSet.getString("password"))
-                 .email(resultSet.getString("email"))
-                 .build();
-      }
-   }
+    public static class SystemUserResultExtractor implements ResultExtractor<SystemUser> {
 
-   @Test
-   @SneakyThrows
-   public void testJdbcSource01() {
+        @Override
+        public SystemUser extract(final ResultSet resultSet) throws SQLException {
+            return SystemUser.builder()
+                .id(resultSet.getLong("id"))
+                .username(resultSet.getString("username"))
+                .password(resultSet.getString("password"))
+                .email(resultSet.getString("email"))
+                .build();
+        }
+    }
 
-      Serializable[][] queryParameters1 = new Serializable[1][2];
-      queryParameters1[0] = new Serializable[]{99L, 9999L};
+    @Test
+    @SneakyThrows
+    public void testJdbcSource01() {
 
-      final JdbcSource<Row> jdbcSource = JdbcSource.<Row>builder()
-              .setResultExtractor(rs -> {
-                 final Row row = Row.withNames();
-                 row.setField("id", rs.getLong("id"));
-                 row.setField("username", rs.getString("username"));
-                 row.setField("password", rs.getString("password"));
-                 row.setField("email", rs.getString("email"));
-                 return row;
-              })
-              .setTypeInformation(new TypeHint<Row>() {
-              }.getTypeInfo())
-              .setUsername(user)
-              .setPassword(password)
-              .setDriverName(driver)
-              .setDBUrl(jdbcUrl)
-              .setSql("SELECT * from system_users su where su.id <= ? and su.dept_id <= ?")
-              .setJdbcParameterValuesProvider(new JdbcGenericParameterValuesProvider(queryParameters1))
-              .build();
+        Serializable[][] queryParameters1 = new Serializable[1][2];
+        queryParameters1[0] = new Serializable[]{99L, 9999L};
 
-      final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-      env.fromSource(jdbcSource, WatermarkStrategy.forMonotonousTimestamps(), "jdbcSource")
-              .map(row -> SystemUser.builder()
-                      .id(row.getFieldAs("id"))
-                      .username(row.getFieldAs("username"))
-                      .password(row.getFieldAs("password"))
-                      .email(row.getFieldAs("email"))
-                      .build())
-              .print();
+        final JdbcSource<Row> jdbcSource = JdbcSource.<Row>builder()
+            .setResultExtractor(rs -> {
+                final Row row = Row.withNames();
+                row.setField("id", rs.getLong("id"));
+                row.setField("username", rs.getString("username"));
+                row.setField("password", rs.getString("password"));
+                row.setField("email", rs.getString("email"));
+                return row;
+            })
+            .setTypeInformation(new TypeHint<Row>() {
+            }.getTypeInfo())
+            .setUsername(user)
+            .setPassword(password)
+            .setDriverName(driver)
+            .setDBUrl(jdbcUrl)
+            .setSql("SELECT * from system_users su where su.id <= ? and su.dept_id <= ?")
+            .setJdbcParameterValuesProvider(new JdbcGenericParameterValuesProvider(queryParameters1))
+            .build();
 
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.fromSource(jdbcSource, WatermarkStrategy.forMonotonousTimestamps(), "jdbcSource")
+            .map(row -> SystemUser.builder()
+                .id(row.getFieldAs("id"))
+                .username(row.getFieldAs("username"))
+                .password(row.getFieldAs("password"))
+                .email(row.getFieldAs("email"))
+                .build())
+            .print();
 
-      env.execute("jdbcTest");
-   }
-
-
-   @Test
-   @SneakyThrows
-   public void testJdbcSource02() {
-
-      Serializable[][] queryParameters1 = new Serializable[1][2];
-      queryParameters1[0] = new Serializable[]{99L, 9999L};
-
-      final JdbcSource<SystemUser> jdbcSource = JdbcSource.<SystemUser>builder()
-              .setResultExtractor(new SystemUserResultExtractor())
-              .setTypeInformation(new TypeHint<SystemUser>() {
-              }.getTypeInfo())
-              .setUsername(user)
-              .setPassword(password)
-              .setDriverName(driver)
-              .setDBUrl(jdbcUrl)
-              .setSql("SELECT * from system_users su where su.id <= ? and su.dept_id <= ?")
-              .setJdbcParameterValuesProvider(new JdbcGenericParameterValuesProvider(queryParameters1))
-              .build();
-
-      final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
-      env.fromSource(jdbcSource, WatermarkStrategy.forMonotonousTimestamps(), "jdbcSource").print();
+        env.execute("jdbcTest");
+    }
 
 
-      env.execute("jdbcTest");
-   }
+    @Test
+    @SneakyThrows
+    public void testJdbcSource02() {
 
-   static String repeat(final String s, final Long times) {
-       final List<String> lst = Stream.from(1).map(i -> s).take(times.intValue()).asJava();
-       return String.join("", lst);
-   }
+        Serializable[][] queryParameters1 = new Serializable[1][2];
+        queryParameters1[0] = new Serializable[]{99L, 9999L};
 
-   @Test
-   @SneakyThrows
-   public void testMaxBy() {
+        final JdbcSource<SystemUser> jdbcSource = JdbcSource.<SystemUser>builder()
+            .setResultExtractor(new SystemUserResultExtractor())
+            .setTypeInformation(new TypeHint<SystemUser>() {
+            }.getTypeInfo())
+            .setUsername(user)
+            .setPassword(password)
+            .setDriverName(driver)
+            .setDBUrl(jdbcUrl)
+            .setSql("SELECT * from system_users su where su.id <= ? and su.dept_id <= ?")
+            .setJdbcParameterValuesProvider(new JdbcGenericParameterValuesProvider(queryParameters1))
+            .build();
 
-      final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-      final SingleOutputStreamOperator<SystemUser> stream = env.fromSequence(1L, 99L)
-              .map(i -> SystemUser.builder().id(i)
-                      .username(String.format("usr%s", repeat("a", i)))
-                      .password(String.format("pwd%s", i % 9))
-                      .email(String.format("usr%s@test.ca", i % 9))
-                      .build())
-              .returns(TypeInformation.of(new TypeHint<>() {
-              }))
-              .map(value -> {
-                 TimeUnit.MILLISECONDS.sleep(1000L);
-                 return value;
-              })
-              .returns(TypeInformation.of(new TypeHint<>() {
-              }))
-              .keyBy(u -> u.getEmail())
-              .windowAll(TumblingProcessingTimeWindows.of(Duration.ofSeconds(1L)))
-              .max("username");
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-      stream.print();
+        env.fromSource(jdbcSource, WatermarkStrategy.forMonotonousTimestamps(), "jdbcSource").print();
 
-      env.execute("jdbcTest");
-   }
+        env.execute("jdbcTest");
+    }
+
+    static String repeat(final String s, final Long times) {
+        final List<String> lst = Stream.from(1).map(i -> s).take(times.intValue()).asJava();
+        return String.join("", lst).concat(times.toString());
+    }
+
+    @Test
+    @SneakyThrows
+    public void testMaxBy() {
+
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        final SingleOutputStreamOperator<SystemUser> stream = env.fromSequence(1L, 41L)
+            .map(i -> SystemUser.builder().id(i % 5)
+                .salary(Math.abs(SecureRandom.getInstanceStrong().nextDouble()))
+                .build())
+            .returns(TypeInformation.of(new TypeHint<>() {
+            }))
+            .map(value -> {
+                TimeUnit.MILLISECONDS.sleep(1000L);
+                return value;
+            })
+            .returns(TypeInformation.of(new TypeHint<>() {
+            }))
+            .keyBy(u -> u.getId())
+            .windowAll(TumblingProcessingTimeWindows.of(Duration.ofSeconds(1L)))
+            .max("salary");
+
+        stream.print();
+
+        env.execute("jdbcTest");
+    }
 
 }
