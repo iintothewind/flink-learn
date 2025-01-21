@@ -1,6 +1,8 @@
 package learn.flink;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+
 import learn.flink.model.SystemUser;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +13,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.connector.jdbc.source.JdbcSource;
 import org.apache.flink.connector.jdbc.source.reader.extractor.ResultExtractor;
 import org.apache.flink.connector.jdbc.split.JdbcGenericParameterValuesProvider;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.types.Row;
 import org.junit.jupiter.api.Test;
 
@@ -108,22 +112,31 @@ public class JdbcConnectorTest {
    }
 
    @Test
-    public void testMaxBy() {
+   @SneakyThrows
+   public void testMaxBy() {
 
-       final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-       env.fromSequence(1L, 99L)
-           .map(i -> SystemUser.builder().id(i).username(String.format("usr%s", i)).password(String.format("pwd%s", i)).email(String.format("usr%s@test.ca", i)).build())
-           .returns(TypeInformation.of(new TypeHint<>() {
-           }))
-           .map( value -> {
-               TimeUnit.MILLISECONDS.sleep(1000L);
-               return value;
-           })
-           .returns(TypeInformation.of(new TypeHint<>() {
-           }))
-           .keyBy(u->u.getId())
-           .max("")
+      final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+      final SingleOutputStreamOperator<SystemUser> stream = env.fromSequence(1L, 99L)
+              .map(i -> SystemUser.builder().id(i)
+                      .username(String.format("usr%s", i % 9))
+                      .password(String.format("pwd%s", i % 9))
+                      .email(String.format("usr%s@test.ca", i % 9))
+                      .build())
+              .returns(TypeInformation.of(new TypeHint<>() {
+              }))
+              .map(value -> {
+                 TimeUnit.MILLISECONDS.sleep(1000L);
+                 return value;
+              })
+              .returns(TypeInformation.of(new TypeHint<>() {
+              }))
+              .keyBy(u -> u.getEmail())
+              .windowAll(TumblingProcessingTimeWindows.of(Duration.ofSeconds(1L)))
+              .max("username");
 
+      stream.print();
+
+      env.execute("jdbcTest");
    }
 
 }
